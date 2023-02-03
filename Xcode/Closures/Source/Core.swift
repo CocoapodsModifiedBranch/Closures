@@ -128,6 +128,7 @@ extension NotificationCenter {
                     if cleanupTarget === target,
                         $0.name == name {
                         self?.removeObserver(observer!)
+                        observer = nil
                     }
                     return
                 }
