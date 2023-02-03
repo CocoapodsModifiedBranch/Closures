@@ -100,86 +100,63 @@ extension String {
 }
 
 extension NotificationCenter {
-    static func selfObserve<T>(name: Notification.Name,
-                               target: T,
-                               closure: @escaping (_ target: T, _ userInfo: [AnyHashable : Any]?) -> Void) where T: AnyObject {
-        NotificationCenter.closures.selfObserve(name: name, target: target, closure: closure)
-    }
-    
-    func selfObserve<T>(name: Notification.Name,
-                        target: T,
-                        closure: @escaping (_ target: T, _ userInfo: [AnyHashable : Any]?) -> Void) where T: AnyObject {
-        
-        // Post a cleanup notification to remove any duplicates
-        let cleanupKey = "com.vhesener.notificationkey.selfobserved.cleanup"
-        post(name: name, object: target, userInfo: [cleanupKey: target])
-        
-        var observer: NSObjectProtocol?
-        observer = addObserver(
-            forName: name,
-            // Can't use the object for this parameter. Since the object
-            // is the one sending the post, it will never clean up. The observer
-            // will always stay in the notification center and I'm not sure of
-            // the concequences of that yet.
-            object: nil,
-            queue: nil) { [weak target, weak self] in
-                // Cleanup any notification with this name;target combo
-                if let cleanupTarget = $0.userInfo?[cleanupKey] as? T {
-                    if cleanupTarget === target,
-                        $0.name == name {
-                        self?.removeObserver(observer!)
-                        observer = nil
-                    }
-                    return
-                }
-                // Remove if target is nil (target-action on self is fruitless)
-                guard let target = target else {
-                    self?.removeObserver(observer!)
-                    observer = nil
-                    return
-                }
-                // Defensive check that self is posting and the target
-                guard let object = $0.object as? T,
-                    object === target else {
-                        return
-                }
-                closure(target, $0.userInfo)
+    static func selfObserve<T: NSObject>(name: Notification.Name,
+                                         target: T,
+                                         closure: @escaping (_ target: T, _ userInfo: [AnyHashable : Any]?) -> Void) where T: AnyObject {
+        target.closureWrapper.owner = target
+        target.closureWrapper.observe(name: name) { target, userInfo in
+            if let target = target as? T {
+                closure(target, userInfo)
+            }
         }
-    }
-    
-    @discardableResult
-    static func observeUntil<T>(
-        _ removeCondition: @escaping (_ object: T?) -> Bool,
-        object: T,
-        name: Notification.Name,
-        closure: @escaping (_ object: T, _ userInfo: [AnyHashable : Any]?) -> Void) -> NSObjectProtocol where T: AnyObject {
-        return NotificationCenter.closures.observeUntil(removeCondition, object: object, name: name, closure: closure)
-    }
-    
-    @discardableResult
-    func observeUntil<T>(
-        _ removeCondition: @escaping (_ object: T?) -> Bool,
-        object: T,
-        name: Notification.Name,
-        closure: @escaping (_ object: T, _ userInfo: [AnyHashable : Any]?) -> Void) -> NSObjectProtocol where T: AnyObject {
-        var observer: NSObjectProtocol?
-        observer = addObserver(
-            forName: name,
-            object: object,
-            queue: nil) { [weak object, weak self] in
-                // Explicit cleanup condition for this observer.
-                guard !removeCondition(object),
-                    let object = object else {
-                        self?.removeObserver(observer!)
-                        observer = nil
-                        return
-                }
-                closure(object, $0.userInfo)
-        }
-        return observer!
     }
 }
 
 extension NotificationCenter {
     static let closures = NotificationCenter()
+}
+
+private class ClosureActionWrapper {
+    weak var owner: AnyObject?
+    var observers: [NSObjectProtocol] = []
+    var closures: [Notification.Name: ((AnyObject, [AnyHashable : Any]?) -> Void)] = [:]
+    
+    deinit {
+        dispose()
+    }
+        
+    func dispose() {
+        observers.forEach {
+            NotificationCenter.closures.removeObserver($0)
+        }
+        observers.removeAll()
+        closures.removeAll()
+    }
+    
+    func observe(name: Notification.Name, closure: @escaping (_ target: AnyObject, _ userInfo: [AnyHashable : Any]?) -> Void) {
+        closures[name] = closure
+        let ob = NotificationCenter.closures.addObserver(forName: name, object: nil, queue: nil) { [weak self] notify in
+            guard let self = self, let owner = self.owner else {
+                self?.dispose()
+                return
+            }
+            guard (notify.object as? AnyObject) === owner else {
+                return
+            }
+            self.closures[name]?(owner, notify.userInfo)
+        }
+        observers.append(ob)
+    }
+}
+
+private var closureKey: Void?
+private extension NSObject {
+    var closureWrapper: ClosureActionWrapper {
+        if let old = objc_getAssociatedObject(self, &closureKey) as? ClosureActionWrapper {
+            return old
+        }
+        let new = ClosureActionWrapper()
+        objc_setAssociatedObject(self, &closureKey, new, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        return new
+    }
 }
