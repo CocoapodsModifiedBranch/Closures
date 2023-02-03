@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
     
     s.homepage         = 'https://github.com/vhesener/Closures'
     s.license          = { :type => 'MIT', :file => 'LICENSE' }
-    s.author           = { 'Vinnie Hesener' }
+    s.author           = { 'Vinnie Hesener' => 'vhesener@github.com' }
     s.source           = { :git => 'https://github.com/vhesener/Closures.git', :tag => s.version.to_s }
     
     s.ios.deployment_target = '9.0'
