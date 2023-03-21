@@ -18,26 +18,25 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import XCTest
 @testable import Closures
+import XCTest
 
 class UICollectionViewTests: XCTestCase {
-    
     func testCollectionViewDelegation() {
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewLayout())
         let exp = expectation(description: "Not all methods called")
         exp.expectedFulfillmentCount = 33
         
-        collectionView.willDisplay { _,_ in
+        collectionView.willDisplay { _, _ in
             exp.fulfill()
         }
-        collectionView.willDisplaySupplementaryView { _,_ in
+        collectionView.willDisplaySupplementaryView { _, _ in
             exp.fulfill()
         }
-        collectionView.didEndDisplaying { _,_ in
+        collectionView.didEndDisplaying { _, _ in
             exp.fulfill()
         }
-        collectionView.didEndDisplayingSupplementaryView { _,_ in
+        collectionView.didEndDisplayingSupplementaryView { _, _ in
             exp.fulfill()
         }
         collectionView.shouldHighlightItemAt { _ in
@@ -68,11 +67,11 @@ class UICollectionViewTests: XCTestCase {
             exp.fulfill()
             return true
         }
-        collectionView.canPerformAction {_,_,_ in
+        collectionView.canPerformAction { _, _, _ in
             exp.fulfill()
             return true
         }
-        collectionView.performAction { _,_,_ in
+        collectionView.performAction { _, _, _ in
             exp.fulfill()
         }
         collectionView.transitionLayoutForOldLayout {
@@ -107,7 +106,7 @@ class UICollectionViewTests: XCTestCase {
             exp.fulfill()
             return 0
         }
-        collectionView.viewForSupplementaryElementOfKind { _,_  in
+        collectionView.viewForSupplementaryElementOfKind { _, _ in
             exp.fulfill()
             return UICollectionReusableView()
         }
@@ -115,14 +114,14 @@ class UICollectionViewTests: XCTestCase {
             exp.fulfill()
             return true
         }
-        collectionView.moveItemAt { _,_ in
+        collectionView.moveItemAt { _, _ in
             exp.fulfill()
         }
         collectionView.indexTitlesFor {
             exp.fulfill()
             return []
         }
-        collectionView.indexPathForIndexTitle { _,_ in
+        collectionView.indexPathForIndexTitle { _, _ in
             exp.fulfill()
             return IndexPath()
         }
@@ -188,8 +187,10 @@ class UICollectionViewTests: XCTestCase {
         _ = datasource.collectionView!(collectionView, viewForSupplementaryElementOfKind: "", at: iPath)
         _ = datasource.collectionView!(collectionView, canMoveItemAt: iPath)
         _ = datasource.collectionView!(collectionView, moveItemAt: iPath, to: iPath)
-        _ = datasource.indexTitles!(for: collectionView)
-        _ = datasource.collectionView!(collectionView, indexPathForIndexTitle: "", at: 0)
+        if #available(iOS 14.0, *) {
+            _ = datasource.indexTitles!(for: collectionView)
+            _ = datasource.collectionView!(collectionView, indexPathForIndexTitle: "", at: 0)
+        }
         _ = delegate.collectionView!(collectionView, layout: collectionView.collectionViewLayout, sizeForItemAt: iPath)
         _ = delegate.collectionView!(collectionView, layout: collectionView.collectionViewLayout, insetForSectionAt: 0)
         _ = delegate.collectionView!(collectionView, layout: collectionView.collectionViewLayout, minimumLineSpacingForSectionAt: 0)

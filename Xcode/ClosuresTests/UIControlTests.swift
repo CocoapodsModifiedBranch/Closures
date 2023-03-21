@@ -2,24 +2,24 @@
  The MIT License (MIT)
  Copyright (c) 2017 Vincent Hesener
 
- Permission is hereby granted, free of charge, to any person obtaining a copy of this software and 
- associated documentation files (the "Software"), to deal in the Software without restriction, 
- including without limitation the rights to use, copy, modify, merge, publish, distribute, 
- sublicense, and/or sell copies of the Software, and to permit persons to whom the Software 
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+ associated documentation files (the "Software"), to deal in the Software without restriction,
+ including without limitation the rights to use, copy, modify, merge, publish, distribute,
+ sublicense, and/or sell copies of the Software, and to permit persons to whom the Software
  is furnished to do so, subject to the following conditions:
 
- The above copyright notice and this permission notice shall be included in all copies or 
+ The above copyright notice and this permission notice shall be included in all copies or
  substantial portions of the Software.
 
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT 
- NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
- NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
- DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ */
 
-import XCTest
 @testable import Closures
+import XCTest
 
 class UIControlTests: XCTestCase {
     let button1 = UIButton(type: .custom)
@@ -32,25 +32,26 @@ class UIControlTests: XCTestCase {
     }
     
     func testButtons() {
-        var tap1Fired = false
+        var tap1FiredCount = 0
         var tap2Fired = false
         button1.onTap {
-            tap1Fired = true
+            tap1FiredCount += 1
+        }
+        button1.onTap {
+            tap1FiredCount += 1
         }
         button2.onTap {
             tap2Fired = true
         }
         button1.touchUpInside(sender: button1, event: nil)
-        XCTAssert(tap1Fired)
+        XCTAssertEqual(tap1FiredCount, 1)
         XCTAssertFalse(tap2Fired)
     }
     
     func testCleanup() {
         let description = NotificationCenter.closures.debugDescription
         var button3: UIButton? = UIButton(type: .custom)
-        button3?.onTap {
-            
-        }
+        button3?.onTap {}
         XCTAssertNotEqual(description, NotificationCenter.closures.debugDescription)
         button3?.touchUpInside(sender: button3!, event: nil)
         button3 = nil
@@ -90,19 +91,19 @@ class UIControlTests: XCTestCase {
         let textField = UITextField()
         let exp = expectation(description: "Not all methods called")
         exp.expectedFulfillmentCount = 7
-        textField.shouldBeginEditing {exp.fulfill(); return true}
-            .didBeginEditing {exp.fulfill()}
-            .shouldEndEditing {exp.fulfill(); return true}
-            .didEndEditing {exp.fulfill()}
-            .shouldChangeCharacters { (_, _) -> Bool in exp.fulfill(); return true;}
+        textField.shouldBeginEditing { exp.fulfill(); return true }
+            .didBeginEditing { exp.fulfill() }
+            .shouldEndEditing { exp.fulfill(); return true }
+            .didEndEditing { exp.fulfill() }
+            .shouldChangeCharacters { _, _ -> Bool in exp.fulfill(); return true }
             .shouldChangeString {
                 exp.fulfill()
                 XCTAssertEqual($0, "old text")
                 XCTAssertEqual($1, "new text")
                 return true
             }
-            .shouldClear {exp.fulfill(); return true}
-            .shouldReturn {exp.fulfill(); return true}
+            .shouldClear { exp.fulfill(); return true }
+            .shouldReturn { exp.fulfill(); return true }
         
         let delegate = textField.delegate
         XCTAssertNotNil(delegate)

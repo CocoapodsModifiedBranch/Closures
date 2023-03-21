@@ -20,11 +20,10 @@
 
 import Foundation
 
-protocol DelegateProtocol: class {
-}
+protocol DelegateProtocol: AnyObject {}
 
 @available(iOS 9.0, *)
-public protocol DelegatorProtocol: class {
+public protocol DelegatorProtocol: AnyObject {
     /**
      Clears any delegates/datasources that were assigned by the `Closures`
      framework for this object. This cleans up memory as well as sets the
@@ -48,9 +47,10 @@ class DelegateWrapper<Delegator: DelegatorProtocol, Delegate: DelegateProtocol>:
     
     public static func wrapper(delegator: Delegator,
                                delegate: @autoclosure () -> Delegate,
-                               delegates:  inout Set<DelegateWrapper<Delegator,Delegate>>,
-                               bind: (_ delegator: Delegator, _ delegate: Delegate) -> Void) -> DelegateWrapper<Delegator,Delegate> {
-        var deadRappers = [DelegateWrapper<Delegator,Delegate>]()
+                               delegates: inout Set<DelegateWrapper<Delegator, Delegate>>,
+                               bind: (_ delegator: Delegator, _ delegate: Delegate) -> Void) -> DelegateWrapper<Delegator, Delegate>
+    {
+        var deadRappers = [DelegateWrapper<Delegator, Delegate>]()
         defer {
             delegates.subtract(deadRappers)
         }
@@ -65,14 +65,14 @@ class DelegateWrapper<Delegator: DelegatorProtocol, Delegate: DelegateProtocol>:
             return wrapper
         }
         let delegate = delegate()
-        let wrapper: DelegateWrapper<Delegator,Delegate> = DelegateWrapper(delegator: delegator, delegate: delegate)
+        let wrapper: DelegateWrapper<Delegator, Delegate> = DelegateWrapper(delegator: delegator, delegate: delegate)
         bind(delegator, delegate)
         delegates.insert(wrapper)
         
         return wrapper
     }
     
-    public static func remove(delegator: Delegator, from delegates: inout Set<DelegateWrapper<Delegator,Delegate>>) {
+    public static func remove(delegator: Delegator, from delegates: inout Set<DelegateWrapper<Delegator, Delegate>>) {
         if let wrapper = delegates.first(where: { $0.delegator === delegator }) {
             delegates.remove(wrapper)
         }
@@ -81,16 +81,17 @@ class DelegateWrapper<Delegator: DelegatorProtocol, Delegate: DelegateProtocol>:
     @available(iOS 9.0, *)
     public static func update(_ delegator: Delegator,
                               delegate: @autoclosure () -> Delegate,
-                              delegates:  inout Set<DelegateWrapper<Delegator,Delegate>>,
+                              delegates: inout Set<DelegateWrapper<Delegator, Delegate>>,
                               bind: (_ delegator: Delegator, _ delegate: Delegate) -> Void,
-                              with updateHandler: (_ wrapper: DelegateWrapper<Delegator, Delegate>) -> Void)  {
+                              with updateHandler: (_ wrapper: DelegateWrapper<Delegator, Delegate>) -> Void)
+    {
         let wrapper = self.wrapper(delegator: delegator, delegate: delegate(), delegates: &delegates, bind: bind)
         updateHandler(wrapper)
         bind(delegator, wrapper.delegate)
     }
 }
 
-fileprivate class BundleHook {}
+private class BundleHook {}
 extension Bundle {
     static let closures = Bundle(for: BundleHook.self)
 }
@@ -102,7 +103,8 @@ extension String {
 extension NotificationCenter {
     static func selfObserve<T: NSObject>(name: Notification.Name,
                                          target: T,
-                                         closure: @escaping (_ target: T, _ userInfo: [AnyHashable : Any]?) -> Void) where T: AnyObject {
+                                         closure: @escaping (_ target: T, _ userInfo: [AnyHashable: Any]?) -> Void) where T: AnyObject
+    {
         target.closureWrapper.owner = target
         target.closureWrapper.observe(name: name) { target, userInfo in
             if let target = target as? T {
@@ -118,8 +120,8 @@ extension NotificationCenter {
 
 private class ClosureActionWrapper {
     weak var owner: AnyObject?
-    var observers: [NSObjectProtocol] = []
-    var closures: [Notification.Name: ((AnyObject, [AnyHashable : Any]?) -> Void)] = [:]
+    var observers: [Notification.Name: NSObjectProtocol] = [:]
+    var closures: [Notification.Name: (AnyObject, [AnyHashable: Any]?) -> Void] = [:]
     
     deinit {
         dispose()
@@ -127,14 +129,16 @@ private class ClosureActionWrapper {
         
     func dispose() {
         observers.forEach {
-            NotificationCenter.closures.removeObserver($0)
+            NotificationCenter.closures.removeObserver($0.value)
         }
         observers.removeAll()
         closures.removeAll()
     }
     
-    func observe(name: Notification.Name, closure: @escaping (_ target: AnyObject, _ userInfo: [AnyHashable : Any]?) -> Void) {
-        closures[name] = closure
+    func observe(name: Notification.Name, closure: @escaping (_ target: AnyObject, _ userInfo: [AnyHashable: Any]?) -> Void) {
+        if let old = observers[name] {
+            NotificationCenter.closures.removeObserver(old)
+        }
         let ob = NotificationCenter.closures.addObserver(forName: name, object: nil, queue: nil) { [weak self] notify in
             guard let self = self, let owner = self.owner else {
                 self?.dispose()
@@ -145,7 +149,8 @@ private class ClosureActionWrapper {
             }
             self.closures[name]?(owner, notify.userInfo)
         }
-        observers.append(ob)
+        observers[name] = ob
+        closures[name] = closure
     }
 }
 
